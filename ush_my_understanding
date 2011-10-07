@@ -1,0 +1,21 @@
+ush
+become familiar with system calls.. mhanje nakki kaay mahit naai
+hostname --check
+parsing --check
+I/O redirection and execv -- hi task complete kar 1st
+special chars and backslash 
+commands --he kase karayche kalat nahi
+cd
+echo
+logout
+nice
+pwd
+setenv
+unsetenv
+where
+
+rc file ~/.ushrc
+strings
+Signals
+Env Variables
+
