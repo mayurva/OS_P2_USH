@@ -11,32 +11,44 @@ int main()
 	Pipe cmd_line;
 	int pipefd[2][2];
 	int pipe_ref = 1;
-	int exit_flag = 0;
-	int pid=0;
+	int inpipe,outpipe;
+	int temp;
+	int exit_flag;
+	int pid,subshell_pid;
 	int status;
-	int i;
 	char message[MAXLEN];
+	strcpy(message,"");
 
 	initShell();
 	while(1)
 	{
 		printPrompt(message);
+		dup2(fileno(stdin),temp);
+//		cmd_line = NULL;
+		fflush(stdout);
 		cmd_line = parse();
+		if(cmd_line == NULL)
+			continue;
 //    		prPipe(command);
 		if(!strcmp(cmd_line->head->args[0],"logout"))
 			exit(0);
 		else
 		{
 			Pipe pipe_line = cmd_line;
-			
+			outpipe = 0;	
 			while(pipe_line)
 			{
+				
+				subshell_pid = pid = 0;
+				exit_flag = 0;
+				
 				printf("Entered a pipe line\n");
 				Cmd c = pipe_line -> head;
 				Cmd d = NULL;
 				Cmd e;
 				while(c!=d)
 				{
+					inpipe = 0;
 					printf("Command in pipe\n");
 					e = c;
 					while(e->next != d)
@@ -45,38 +57,77 @@ int main()
 					if(c != d)
 					{	
 						pipe_ref = !pipe_ref;
-						pipe(pipefd[pipe_ref]);				
-						printf("pipe %d created \n",pipe_ref);
-						pid = fork();
-						if(pid) //This is the parent
+						if (pipe(pipefd[pipe_ref]) == -1)
 						{
-							close(pipefd[pipe_ref][1]);
-							dup2(0,pipefd[pipe_ref][0]);
-							waitpid(pid,&status,0);
+							printf("Pipe creation failed\n");
+							exit (-1);
+						}				
+						printf("pipe %d created \n",pipe_ref);
+						subshell_pid = fork();
+						if(subshell_pid) //This is the parent
+						{
+							inpipe = 1;
+							waitpid(subshell_pid,&status,0);
+							d = c;
+							break;
 						}
 						else
 						{
-							close(pipefd[pipe_ref][0]);
-							dup2(1,pipefd[pipe_ref][1]);
+							outpipe = 1;
 							exit_flag = 1;
 						}
 					}
+					else
+					{
+						printf("HERE IN ELSE\n");
+						break;
+					}
 				}
-	
-				printf("Executing the command\n");
-				char run_cmd[MAXLEN] = "/bin/";
-				strcat(run_cmd,e->args[0]);
-				execv(run_cmd,e->args);
+				pid = fork();
+	                        if(!pid)
+        	                {
+					if(inpipe)
+					{
+						close(pipefd[pipe_ref][1]);
+						dup2(pipefd[pipe_ref][0],fileno(stdin));
+						close(pipefd[pipe_ref][0]);
+						printf("Parent pipe ref is %d\n",pipe_ref);
+					}
+					
+					printf("Outpipe is %d\n",outpipe);
+					if(outpipe)
+					{
+						close(pipefd[pipe_ref][0]);
+						dup2(pipefd[pipe_ref][1],fileno(stdout));
+						close(pipefd[pipe_ref][1]);
+						printf("Child pipe ref is %d\n",pipe_ref);
+					}
 
-				printf("Execution completed\n");
-				printf("pid is %d\n",pid);
-				if(pid)
-					waitpid(pid,&status,0);
-				printf("Exit flag is: %d\n",exit_flag);
-				if(exit_flag)
+					printf("Executing the command %s\n",e->args[0]);
+					char run_cmd[MAXLEN] = "/bin/";
+					strcat(run_cmd,e->args[0]);
+					execv(run_cmd,e->args);
+					printf("HERE EXECUTION COMPLETED\n");
 					exit(0);
-				
+				}
+				else
+				{
+					printf("pid is %d\n",pid);
+					if(pid)
+						waitpid(pid,&status,0);
+					printf("Exit flag is: %d\n",exit_flag);
+					if(exit_flag)
+						exit(0);
+					else
+						dup2(temp,fileno(stdin));
+				}
+
 				pipe_line = pipe_line -> next;
+				if(pipe_line == NULL)
+				{
+					printf("Here in if\n");
+					break;
+				}
 			}
 				
 		}
