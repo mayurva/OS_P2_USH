@@ -1,3 +1,5 @@
 1. http://linux.die.net/man/2/gethostname How to set hostname
 2. http://pubs.opengroup.org/onlinepubs/9699919799/functions/exec.html How to use execv
 3. http://www.cs.utah.edu/dept/old/texinfo/glibc-manual-0.02/library_23.html 
+4. http://tldp.org/LDP/Bash-Beginners-Guide/html/sect_01_03.html understand builtin commands
+5. http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html pipes and redirection

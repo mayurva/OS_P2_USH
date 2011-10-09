@@ -6,107 +6,99 @@
 #include"ush.h"
 #include"parse.h"
 
+char **environ;
+
 int main()
 {
 	Pipe cmd_line;
-	int pipefd[2][2];
 	int pipe_ref = 1;
-	int inpipe,outpipe;
-	int temp;
 	int exit_flag;
 	int pid,subshell_pid;
 	int status;
-	char message[MAXLEN];
-	strcpy(message,"");
-
 	initShell();
+//	execrc();
 	while(1)
 	{
-		printPrompt(message);
-		dup2(fileno(stdin),temp);
-//		cmd_line = NULL;
-		fflush(stdout);
+		printPrompt();
 		cmd_line = parse();
-		if(cmd_line == NULL)
+		if(cmd_line == NULL) //no input
 			continue;
-//    		prPipe(command);
-		if(!strcmp(cmd_line->head->args[0],"logout"))
-			exit(0);
-		else
+
+		Pipe pipe_line = cmd_line;
+		while(pipe_line)
 		{
-			Pipe pipe_line = cmd_line;
-			outpipe = 0;	
-			while(pipe_line)
+			
+			subshell_pid = pid = 0;
+			exit_flag = 0;
+			
+			printf("Entered a pipe line\n");
+			Cmd c = pipe_line -> head;
+			Cmd d = NULL;
+			Cmd e;
+			
+			while(c!=d)
 			{
-				
-				subshell_pid = pid = 0;
-				exit_flag = 0;
-				
-				printf("Entered a pipe line\n");
-				Cmd c = pipe_line -> head;
-				Cmd d = NULL;
-				Cmd e;
-				while(c!=d)
-				{
-					inpipe = 0;
-					printf("Command in pipe\n");
-					e = c;
-					while(e->next != d)
-						e=e->next;
-					d = e;
-					if(c != d)
-					{	
-						pipe_ref = !pipe_ref;
-						if (pipe(pipefd[pipe_ref]) == -1)
-						{
-							printf("Pipe creation failed\n");
-							exit (-1);
-						}				
-						printf("pipe %d created \n",pipe_ref);
-						subshell_pid = fork();
-						if(subshell_pid) //This is the parent
-						{
-							inpipe = 1;
-							waitpid(subshell_pid,&status,0);
-							d = c;
-							break;
-						}
-						else
-						{
-							outpipe = 1;
-							exit_flag = 1;
-						}
+				printf("Command in pipe\n");
+				e = c;
+				while(e->next != d)
+					e=e->next;
+				d = e;
+				if(c != d)
+				{	
+					pipe_ref = !pipe_ref;
+					createPipe(pipe_ref);
+					subshell_pid = fork();
+					if(subshell_pid) //This is the parent
+					{
+						setPipeRedirect(pipe_ref,fileno(stdin));						
+						waitpid(subshell_pid,&status,0);
+						d = c;
+						break;
 					}
 					else
 					{
-						printf("HERE IN ELSE\n");
-						break;
+						setPipeRedirect(pipe_ref,fileno(stdout));
+						exit_flag = 1;
 					}
 				}
-				pid = fork();
-	                        if(!pid)
-        	                {
-					if(inpipe)
-					{
-						close(pipefd[pipe_ref][1]);
-						dup2(pipefd[pipe_ref][0],fileno(stdin));
-						close(pipefd[pipe_ref][0]);
-						printf("Parent pipe ref is %d\n",pipe_ref);
-					}
-					
-					printf("Outpipe is %d\n",outpipe);
-					if(outpipe)
-					{
-						close(pipefd[pipe_ref][0]);
-						dup2(pipefd[pipe_ref][1],fileno(stdout));
-						close(pipefd[pipe_ref][1]);
-						printf("Child pipe ref is %d\n",pipe_ref);
-					}
 
+			}
+			setupRedirect(e);
+			if(isBuiltinCmd(e->args[0]) != -1)
+				execCmd(e);
+			else
+			{
+				char path[MAXLEN];
+				strcpy(path,e->args[0]);
+				if(strstr(e->args[0],"/")==NULL) //this is the path case
+				{
+					strcpy(path,"/bin/");
+					strcat(path,e->args[0]);	
+					strcpy(e->args[0],path);
+				}
+
+				if(access(path,F_OK) !=0)
+				{
+					resetStreams();
+					pipe_line = pipe_line -> next;
+					printf("Command not found\n");
+					continue;
+				}				
+							
+				if(access(path,R_OK|X_OK) !=0)
+				{
+					resetStreams();
+					pipe_line = pipe_line -> next;
+					printf("Permission denied\n");
+					continue;
+				}
+
+				printf("Before fork()\n");
+				pid = fork();
+				if(!pid)
+       		                {
 					printf("Executing the command %s\n",e->args[0]);
-					char run_cmd[MAXLEN] = "/bin/";
-					strcat(run_cmd,e->args[0]);
-					execv(run_cmd,e->args);
+					execv(e->args[0],e->args);
 					printf("HERE EXECUTION COMPLETED\n");
 					exit(0);
 				}
@@ -115,22 +107,15 @@ int main()
 					printf("pid is %d\n",pid);
 					if(pid)
 						waitpid(pid,&status,0);
-					printf("Exit flag is: %d\n",exit_flag);
-					if(exit_flag)
-						exit(0);
-					else
-						dup2(temp,fileno(stdin));
-				}
-
-				pipe_line = pipe_line -> next;
-				if(pipe_line == NULL)
-				{
-					printf("Here in if\n");
-					break;
-				}
+				}	
 			}
-				
+
+			printf("Exit flag is: %d\n",exit_flag);
+			if(exit_flag)
+				exit(0);
+			resetStreams();
+			printf("Streams Reset\n");
+			pipe_line = pipe_line -> next;
 		}
-	printf("Last line of while  1\n");
 	}
 }

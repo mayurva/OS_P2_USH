@@ -2,20 +2,26 @@ ush
 become familiar with system calls.. mhanje nakki kaay mahit naai
 hostname --check
 parsing --check
+
+8th la
 I/O redirection and execv -- hi task complete kar 1st
-special chars and backslash 
-commands --he kase karayche kalat nahi
+
+9th la
+commands --within the shell 
 cd
 echo
-logout
+logout --check
 nice
 pwd
-setenv
-unsetenv
 where
 
+9th la
 rc file ~/.ushrc
 strings
+special chars and backslash 
 Signals
-Env Variables
 
+10th la
+Env Variables
+setenv
+unsetenv
