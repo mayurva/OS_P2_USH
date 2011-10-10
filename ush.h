@@ -12,6 +12,6 @@ extern int old_stdout;
 extern int old_stderr;
 extern char message[MAXLEN];
 extern int pipefd[2][2];
-extern int rc_file;
+extern int rc_processing;
 #endif
 
