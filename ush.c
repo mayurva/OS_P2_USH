@@ -21,9 +21,14 @@ int main()
 	{
 		printPrompt();
 		cmd_line = parse();
-		if(cmd_line == NULL) //no input
+		if(cmd_line == NULL) // no input
 			continue;
-
+		if(strcmp(cmd_line -> head -> args[0],"end")==0) // done with ushrc processing
+		{
+			setupPrompt();	
+			continue;
+		}
+	
 		Pipe pipe_line = cmd_line;
 		while(pipe_line)
 		{
@@ -85,7 +90,7 @@ int main()
 					continue;
 				}				
 							
-				if(access(path,R_OK|X_OK) !=0)
+				if(access(path,R_OK|X_OK) !=0 || isdir(path))
 				{
 					resetStreams();
 					pipe_line = pipe_line -> next;

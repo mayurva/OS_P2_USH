@@ -1,27 +1,34 @@
 ush
-become familiar with system calls.. mhanje nakki kaay mahit naai
+become familiar with system calls.. mhanje nakki kaay mahit naai --check
 hostname --check
 parsing --check
 
 8th la
-I/O redirection and execv -- hi task complete kar 1st
+I/O redirection --check 
+execv --path variable, access system call, find a dir
 
 9th la
 commands --within the shell 
-cd
-echo
-logout --check
-nice
-pwd
-where
+cd --how to find a dir
+echo --more elegant infile
+logout --check	
+nice --
+pwd --get_cur_working_dir
+where --last
 
 9th la
-rc file ~/.ushrc
+rc file ~/.ushrc --done
 strings
 special chars and backslash 
-Signals
+Signals --what all signals.. SIGQUIT has to quit command sequence... how about Ctrl+Z and Ctrl + C
 
 10th la
 Env Variables
 setenv
 unsetenv
+
+system calls
+access --file permissions
+chdir --change dir
+nice --change nice value
+signal --signal
