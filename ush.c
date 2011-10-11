@@ -79,7 +79,6 @@ void runShell()
 
 	while(1)
 	{
-//		printf("prompt_flag %d\n",prompt_flag);
 		printPrompt();
 		cmd_line = parse();
 		if(cmd_line == NULL) // no input

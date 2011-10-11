@@ -9,6 +9,6 @@ $(objects): $(includes)
 
 .PHONY: clean 
 clean:
-	rm -f $(library) $(objects)
+	rm -f $(out) $(objects)
 
 

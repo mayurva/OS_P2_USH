@@ -45,8 +45,8 @@ static Token LookAhead;
 static char Word[BUF_SIZE+1];	// this value is valid when LookAhead == Tword
 
 // extern functions
-extern void *malloc(unsigned);
-extern void *realloc(void *, unsigned);
+//extern void *malloc(unsigned);
+//extern void *realloc(void *, unsigned);
 
 // forward decls
 void *ckmalloc(unsigned);

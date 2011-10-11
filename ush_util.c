@@ -76,8 +76,6 @@ void printPrompt()
 
 void createPipe(int pipe_ref)
 {
-//	close(pipefd[pipe_ref][0]);
-//	close(pipefd[pipe_ref][1]);
 	if (pipe(pipefd[pipe_ref]) == -1)
 	{
 		printf("Pipe creation failed\n");
@@ -153,12 +151,12 @@ int initShell()
 	}
 	else
 	{
-		fprintf(stderr,"ushrc not found\n");
 		char hostname[MAXLEN];
 		int len;
 		rc_processing = FALSE;
 		gethostname(hostname,len);
-		strcpy(prompt,hostname);
+		if(len)
+			strcpy(prompt,hostname);
 		strcat(prompt,"% ");
 	}
 }
@@ -198,8 +196,6 @@ void exec_cd(Cmd c)
 	printf("Inside cd\n");
 #endif
 	char *cmd_path,*path1;
-	char cwd[MAXLEN];
-	strcpy(cwd,getenv("PWD"));
 	if(c->args[1] == NULL)
 	{
 		c->args[1] = malloc(strlen(home));
@@ -228,7 +224,6 @@ void exec_cd(Cmd c)
 		#ifdef DEBUG	
 			printf("/");
 		#endif	
-			strcpy(cwd,"");
 		}
 		cmd_path=strtok(c->args[1],"/");
 		while(cmd_path != NULL)
@@ -239,20 +234,12 @@ void exec_cd(Cmd c)
 			#ifdef DEBUG
 				printf("%s/",cmd_path);
 			#endif	
-				strcat(cwd,"/");
-				strcat(cwd,cmd_path);
 			}
 			cmd_path = strtok(NULL,"/");
 		}
 	#ifdef DEBUG	
 		printf("\n");
 	#endif
-		if(strcmp(cwd,"")==0)
-			strcpy(cwd,"/");
-	#ifdef DEBUG
-		printf("cwd is %s\n",cwd);
-	#endif
-	//	setenv("PWD",cwd,1);
 	}	
 	else
 		fprintf(stderr,"Not a directory\n");
@@ -318,10 +305,9 @@ void exec_nice(Cmd c)
 
 void exec_pwd(Cmd c)
 {
-	char *dir,*env_dir;
-	//env_dir = getenv("PWD");
-	env_dir = (char*)get_current_dir_name();
-	printf("%s\n",env_dir);
+	char *dir;
+	dir = (char*)get_current_dir_name();
+	printf("%s\n",dir);
 
 }
 
@@ -418,8 +404,6 @@ setupRedirect(Cmd c)
 			}
 			close(temp);
 		}
-//	printf("c->out is %d\n",c->out);
-//	if(c->out!=Tnil)
 		switch ( c->out )
 		{
 			case ToutErr:
@@ -449,9 +433,6 @@ setupRedirect(Cmd c)
 				}
 				break;
 
-//			default:                  
-//				fprintf(stderr, "Shouldn't get here\n");
-//				exit(-1);               
 		}                         
 }
 
