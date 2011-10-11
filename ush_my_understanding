@@ -5,27 +5,27 @@ parsing --check
 
 8th la
 I/O redirection --check 
-execv --path variable, access system call, find a dir
+execv --check
 
 9th la
 commands --within the shell 
-cd --how to find a dir
-echo --more elegant infile
+cd --check
+echo --check
 logout --check	
-nice --
-pwd --get_cur_working_dir
-where --last
+nice --done command exec needs changes -- 11th 
+pwd --get_cur_working_dir can be removed now
+where --check
 
 9th la
-rc file ~/.ushrc --done
-strings
-special chars and backslash 
-Signals --what all signals.. SIGQUIT has to quit command sequence... how about Ctrl+Z and Ctrl + C
+rc file ~/.ushrc --check
+strings --check I guess :P
+special chars and backslash --check I guess :P 
+Signals --what all signals.. SIGQUIT (Ctrl+C) has to quit command sequence... 11th
 
 10th la
 Env Variables
-setenv
-unsetenv
+setenv --done with setenv 
+unsetenv --done with getenv
 
 system calls
 access --file permissions

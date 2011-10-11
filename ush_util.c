@@ -16,6 +16,9 @@ int pipefd[2][2];
 char prompt[MAXLEN];
 int rc_file, old_rc_stdin;
 int rc_processing;
+extern char **environ;
+char *home;
+char *path;
 
 void saveStreams()
 {
@@ -99,9 +102,17 @@ int isBuiltinCmd(char *cmd)
 
 int initShell()
 {
+	char rcpath[MAXLEN];
+	path = getenv("PATH");
+	printf("PATH is %s\n",path);
+	home = getenv("HOME");
+	strcpy(rcpath,home);
+	strcat(rcpath,"/.ushrc");
 	strcpy(prompt,"");
-	signal(SIGQUIT,SIG_IGN);
-	if((rc_file = open("/home/mayur/.ushrc",O_RDONLY)) != -1)
+	signal(SIGQUIT,SIG_IGN);	//CTRL+\/
+	//signal(SIGTSTP,SIG_IGN);	//CTRL+Z
+//	signal(SIG_INT,handle_sig_int()); //CTRL+C
+	if((rc_file = open(rcpath,O_RDONLY)) != -1)
 	{
 		old_rc_stdin = dup(fileno(stdin));
 		dup2(rc_file,fileno(stdin));
@@ -137,65 +148,73 @@ void exec_echo(Cmd c)
 {
 	int i=1;
 	char buf[MAXLEN];
-	if(c->infile)
-	{	
-		scanf("%s",buf);
-		while(strcmp(buf,c->args[i-1])!=0)
-		{
-			c->args[i] = malloc(strlen(buf)+1);
-			strcpy(c->args[i],buf);
-			scanf("%s",buf);
-			i++;
-		}	
-		i=1;
+	while(c->args[i]!=NULL)
+	{
+		printf("%s ",c->args[i]);
+		i++;	
 	}
-		while(c->args[i]!=NULL)
-		{
-			printf("%s ",c->args[i]);
-			i++;	
-		}
 	printf("\n");
 }
 
 void exec_cd(Cmd c)
 {	
 	printf("Inside cd\n");
-	char *path,*path1;
+	char *cmd_path,*path1;
+	char cwd[MAXLEN];
+	strcpy(cwd,getenv("PWD"));
 	if(c->args[1] == NULL)
-        {
+	{
+		c->args[1] = malloc(strlen(home));
+		strcpy(c->args[1],home);
+		printf("HOME is %s\n",c->args[1]);
 	}
-        else if(isdir(c->args[1]))
+        if(isdir(c->args[1]))
 	{
 		if(c->args[1][0] == '/')
 		{
 			chdir("/");
 			printf("/");
+			strcpy(cwd,"");
 		}
-		path=strtok(c->args[1],"/");
-		while(path != NULL)
+		cmd_path=strtok(c->args[1],"/");
+		while(cmd_path != NULL)
 		{
-			chdir(path);
-			printf("%s/",path);
-			path = strtok(NULL,"/");
+			chdir(cmd_path);
+			printf("%s/",cmd_path);
+			strcat(cwd,"/");
+			strcat(cwd,cmd_path);
+			cmd_path = strtok(NULL,"/");
 		}
 		printf("\n");
+		if(strcmp(cwd,"")==0)
+			strcpy(cwd,"/");
+		printf("cwd is %s\n",cwd);
+		setenv("PWD",cwd,1);
 	}	
 	else
 		printf("Not a directory\n");
 }
 
-int isdir(char *path)
+int isdir(char *cmd_path)
 {
 	int r;
 	printf("Inside isdir\n");
 	struct stat *buf;
 	buf = malloc(sizeof(struct stat));
-	stat(path,buf);
+	stat(cmd_path,buf);
 	r = buf->st_mode & S_IFDIR;
 	printf("isdir %d\n",r);
 	free(buf);
 	return r;
 }	
+
+int iscmd(char *cmd_path)
+{
+	if(access(cmd_path,F_OK) !=0)	return 1;
+	if(access(cmd_path,R_OK|X_OK) !=0 || isdir(cmd_path))	return 2;
+	return 0;
+}
+
 
 void exec_nice(Cmd c)
 {
@@ -216,22 +235,65 @@ void exec_nice(Cmd c)
 
 void exec_pwd(Cmd c)
 {
-	char *dir;
+	char *dir,*env_dir;
 	dir = get_current_dir_name();
-	printf("%s\n",dir);
+	env_dir = getenv("PWD");
+	printf("%s\n%s\n",dir,env_dir);
+	
 	free(dir);
 }
 
 void exec_setenv(Cmd c)
 {
+	int i;
+	printf("In setenv\n");
+	if(c->args[1] == NULL)
+	{
+		char **e = environ;
+		while(*e)
+		{
+			printf("%s\n",*e);
+			*e++;
+		}
+		return;
+	}
+	else if(c->args[2] == NULL)
+		setenv(c->args[1],"",1);
+	else
+		setenv(c->args[1],c->args[2],1);
+	printf("%s\n",getenv(c->args[1]));
 }
 
 void exec_unsetenv(Cmd c)
 {
+	if(c->args[1] == NULL)
+		printf("unsetenv: too few arguments\n");
+	else
+	{
+		unsetenv(c->args[1]);
+		printf("%s\n",getenv(c->args[1]));
+	}
 }
 
 void exec_where(Cmd c)
 {
+	char *needle;
+	char path1[MAXLEN],cmd_path[MAXLEN]="";
+	int i=isBuiltinCmd(c->args[1]);
+	if(i!=-1)
+		printf("%s\n",builtin_cmds[i]);
+	strcpy(path1,path);
+	needle = strtok(path1,":");
+	while(needle != NULL)
+	{
+		strcpy(cmd_path,needle);
+		strcat(cmd_path,"/");
+		strcat(cmd_path,c->args[1]);
+		if(!iscmd(cmd_path))
+			printf("%s\n",cmd_path);
+		needle = strtok(NULL,":");
+	}
+
 }
 
 void execCmd(Cmd c)

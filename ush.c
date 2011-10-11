@@ -6,11 +6,11 @@
 #include"ush.h"
 #include"parse.h"
 
-char **environ;
 
 int main()
 {
 	Pipe cmd_line;
+	char *invalid_cmd[] = {"","Command not found","Permission denied"};
 	int pipe_ref = 1;
 	int exit_flag;
 	int pid,subshell_pid;
@@ -73,32 +73,35 @@ int main()
 				execCmd(e);
 			else
 			{
-				char path[MAXLEN];
-				strcpy(path,e->args[0]);
+				char cmd_path[MAXLEN],path1[MAXLEN];
+				strcpy(cmd_path,e->args[0]);
 				if(strstr(e->args[0],"/")==NULL) //this is the path case
 				{
-					strcpy(path,"/bin/");
-					strcat(path,e->args[0]);	
-					strcpy(e->args[0],path);
+					char *needle;
+					strcpy(path1,path);
+					needle = strtok(path1,":");
+					while(needle != NULL)
+					{
+						strcpy(cmd_path,needle);
+						strcat(cmd_path,"/");
+						strcat(cmd_path,e->args[0]);
+						if(!iscmd(cmd_path))
+							break;
+						needle = strtok(NULL,":");
+					}
+					printf("cmd_path is %s\n",cmd_path);
+					strcpy(e->args[0],cmd_path);
 				}
 
-				if(access(path,F_OK) !=0)
+				printf("command is %s\n",e->args[0]);
+				int r = iscmd(e->args[0]);				
+				if(r)
 				{
 					resetStreams();
 					pipe_line = pipe_line -> next;
-					printf("Command not found\n");
-					continue;
-				}				
-							
-				if(access(path,R_OK|X_OK) !=0 || isdir(path))
-				{
-					resetStreams();
-					pipe_line = pipe_line -> next;
-					printf("Permission denied\n");
+					printf("%s\n",invalid_cmd[r]);
 					continue;
 				}
-
-				printf("Before fork()\n");
 				pid = fork();
 				if(!pid)
        		                {

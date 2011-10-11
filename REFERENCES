@@ -3,5 +3,7 @@
 3. http://www.cs.utah.edu/dept/old/texinfo/glibc-manual-0.02/library_23.html 
 4. http://tldp.org/LDP/Bash-Beginners-Guide/html/sect_01_03.html understand builtin commands
 5. http://www.cs.loyola.edu/~jglenn/702/S2005/Examples/dup2.html pipes and redirection
-6. http://stackoverflow.com/questions/146924/how-can-i-tell-if-a-given-path-is-a-directory-or-a-file-c-c --to identify a dir
-7. "Design of the UNIX operating System", Maurice J. Bach --system calls
+6. http://linux.die.net/man/2/stat to find dir or not
+7. http://stackoverflow.com/questions/146924/how-can-i-tell-if-a-given-path-is-a-directory-or-a-file-c-c --to identify a dir
+8. "Design of the UNIX operating System", Maurice J.  Bach --system calls
+9. http://stackoverflow.com/questions/3473692/list-environment-variables-with-c-in-unix to print env variables
