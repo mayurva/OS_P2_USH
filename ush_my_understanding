@@ -12,15 +12,15 @@ commands --within the shell
 cd --check
 echo --check
 logout --check	
-nice --done command exec needs changes -- 11th 
-pwd --get_cur_working_dir can be removed now
+nice -check 
+pwd --check
 where --check
 
 9th la
 rc file ~/.ushrc --check
 strings --check I guess :P
 special chars and backslash --check I guess :P 
-Signals --what all signals.. SIGQUIT (Ctrl+C) has to quit command sequence... 11th
+Signals --what all signals.. SIGQUIT (Ctrl+C) is the only left 
 
 10th la
 Env Variables

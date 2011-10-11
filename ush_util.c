@@ -24,17 +24,17 @@ void saveStreams()
 {
 	if((old_stdin = dup(fileno(stdin))) == -1)
 	{
-		printf("dup failed\n");
+		perror("dup failed\n");
 		exit(0);
 	}
 	if((old_stdout = dup(fileno(stdout))) == -1)
 	{
-		printf("dup failed\n");
+		perror("dup failed\n");
 		exit(0);
 	}
 	if((old_stderr = dup(fileno(stderr))) == -1)
 	{
-		printf("dup failed\n");
+		perror("dup failed\n");
 		exit(0);
 	}
 
@@ -44,26 +44,30 @@ void resetStreams()
 {
 	if(dup2(old_stdin,fileno(stdin)) == -1)
 	{
-		printf("dup failed\n");
+		perror("dup failed\n");
 		exit(0);
 	}
 	if(dup2(old_stdout,fileno(stdout)) == -1)
 	{
-		printf("dup failed\n");
+		perror("dup failed\n");
 		exit(0);
 	}
 	if(dup2(old_stderr,fileno(stderr)) == -1)
 	{
-		printf("dup failed\n");
+		perror("dup failed\n");
 		exit(0);
 	}
 }
 
 void printPrompt()
 {
-	printf("%s",prompt);
-	saveStreams();
-	fflush(stdout);
+	if(prompt_flag == 0)
+	{
+		printf("%s",prompt);
+		saveStreams();
+		fflush(stdout);
+		prompt_flag = 1;
+	}
 }
 
 void execrc()
@@ -78,17 +82,21 @@ void createPipe(int pipe_ref)
 	close(pipefd[pipe_ref][1]);
 	if (pipe(pipefd[pipe_ref]) == -1)
 	{
-		printf("Pipe creation failed\n");
+		perror("Pipe creation failed\n");
 		exit (-1);
-	}				
+	}
+#ifdef DEBUG				
 	printf("pipe %d created \n",pipe_ref);
+#endif
 }
 
 void setPipeRedirect(int pipe_ref,int stream)
 {
 	close(pipefd[pipe_ref][!stream]);
 	dup2(pipefd[pipe_ref][stream],stream);
+#ifdef DEBUG
 	printf("The pipe ref is %d\n",pipe_ref);
+#endif
 }
 
 int isBuiltinCmd(char *cmd)
@@ -100,18 +108,30 @@ int isBuiltinCmd(char *cmd)
 	return -1;
 }
 
+void handle_sigint()
+{
+	if(exit_flag)
+		exit(0);
+	printf("\n");
+	prompt_flag = 0;
+	printPrompt();
+}
+
 int initShell()
 {
 	char rcpath[MAXLEN];
 	path = getenv("PATH");
+	prompt_flag = 0;
+#ifdef DEBUG
 	printf("PATH is %s\n",path);
+#endif
 	home = getenv("HOME");
 	strcpy(rcpath,home);
 	strcat(rcpath,"/.ushrc");
 	strcpy(prompt,"");
 	signal(SIGQUIT,SIG_IGN);	//CTRL+\/
-	//signal(SIGTSTP,SIG_IGN);	//CTRL+Z
-//	signal(SIG_INT,handle_sig_int()); //CTRL+C
+	signal(SIGTSTP,SIG_IGN);	//CTRL+Z
+	signal(SIGINT,handle_sigint); //CTRL+C
 	if((rc_file = open(rcpath,O_RDONLY)) != -1)
 	{
 		old_rc_stdin = dup(fileno(stdin));
@@ -121,7 +141,7 @@ int initShell()
 	}
 	else
 	{
-		printf("ushrc not found\n");
+		perror("ushrc not found\n");
 		char hostname[MAXLEN];
 		int len;
 		rc_processing = FALSE;
@@ -135,13 +155,16 @@ int setupPrompt()
 {
 	char hostname[MAXLEN];
 	int len;
+#ifdef DEBUG
 	printf("Inside Setup prompt\n");
+#endif
 	dup2(old_rc_stdin,fileno(stdin));
 	rc_processing = FALSE;
 	gethostname(hostname,len);
 	strcpy(prompt,hostname);
 	strcat(prompt,"% ");
 	rc_processing = FALSE;
+	prompt_flag = 0;
 }
 
 void exec_echo(Cmd c)
@@ -153,12 +176,15 @@ void exec_echo(Cmd c)
 		printf("%s ",c->args[i]);
 		i++;	
 	}
-	printf("\n");
+	if(i!=1)
+		printf("\n");
 }
 
 void exec_cd(Cmd c)
 {	
+#ifdef DEBUG
 	printf("Inside cd\n");
+#endif
 	char *cmd_path,*path1;
 	char cwd[MAXLEN];
 	strcpy(cwd,getenv("PWD"));
@@ -166,44 +192,58 @@ void exec_cd(Cmd c)
 	{
 		c->args[1] = malloc(strlen(home));
 		strcpy(c->args[1],home);
+	#ifdef DEBUG
 		printf("HOME is %s\n",c->args[1]);
+	#endif
 	}
         if(isdir(c->args[1]))
 	{
 		if(c->args[1][0] == '/')
 		{
 			chdir("/");
+		#ifdef DEBUG	
 			printf("/");
+		#endif	
 			strcpy(cwd,"");
 		}
 		cmd_path=strtok(c->args[1],"/");
 		while(cmd_path != NULL)
 		{
 			chdir(cmd_path);
+		#ifdef DEBUG
 			printf("%s/",cmd_path);
+		#endif
 			strcat(cwd,"/");
 			strcat(cwd,cmd_path);
 			cmd_path = strtok(NULL,"/");
 		}
+	#ifdef DEBUG	
 		printf("\n");
+	#endif
 		if(strcmp(cwd,"")==0)
 			strcpy(cwd,"/");
+	#ifdef DEBUG
 		printf("cwd is %s\n",cwd);
+	#endif
 		setenv("PWD",cwd,1);
 	}	
 	else
-		printf("Not a directory\n");
+		perror("Not a directory\n");
 }
 
 int isdir(char *cmd_path)
 {
 	int r;
+#ifdef DEBUG
 	printf("Inside isdir\n");
+#endif
 	struct stat *buf;
 	buf = malloc(sizeof(struct stat));
 	stat(cmd_path,buf);
 	r = buf->st_mode & S_IFDIR;
+#ifdef DEBUG
 	printf("isdir %d\n",r);
+#endif
 	free(buf);
 	return r;
 }	
@@ -230,23 +270,39 @@ void exec_nice(Cmd c)
 	else	prio = 4;
 	getpriority(which, who);
 	setpriority(which, who, prio);
-	
+	if(c->args[2]!=NULL)
+	{
+	#ifdef DEBUG
+		printf("Command present %s\n",c->args[0]);
+	#endif
+		Cmd temp;
+		temp = malloc(sizeof(struct cmd_t));
+		temp->args = malloc(sizeof(char*));
+		temp->in = Tnil;
+		temp->out = Tnil;
+		temp->args[0] = malloc(strlen(c->args[2]));
+		strcpy(temp->args[0],c->args[2]);
+		execute_command(temp);
+		free(temp->args[0]);
+		free(temp->args);
+		free(temp);
+	}
 }
 
 void exec_pwd(Cmd c)
 {
 	char *dir,*env_dir;
-	dir = get_current_dir_name();
 	env_dir = getenv("PWD");
-	printf("%s\n%s\n",dir,env_dir);
-	
-	free(dir);
+	printf("%s\n",env_dir);
+
 }
 
 void exec_setenv(Cmd c)
 {
 	int i;
+#ifdef DEBUG
 	printf("In setenv\n");
+#endif
 	if(c->args[1] == NULL)
 	{
 		char **e = environ;
@@ -261,17 +317,21 @@ void exec_setenv(Cmd c)
 		setenv(c->args[1],"",1);
 	else
 		setenv(c->args[1],c->args[2],1);
-	printf("%s\n",getenv(c->args[1]));
+#ifdef DEBUG
+	printf("%s\n",getenv(c->args[1]));	
+#endif
 }
 
 void exec_unsetenv(Cmd c)
 {
 	if(c->args[1] == NULL)
-		printf("unsetenv: too few arguments\n");
+		perror("unsetenv: too few arguments\n");
 	else
 	{
 		unsetenv(c->args[1]);
+	#ifdef DEBUG
 		printf("%s\n",getenv(c->args[1]));
+	#endif
 	}
 }
 
@@ -298,7 +358,9 @@ void exec_where(Cmd c)
 
 void execCmd(Cmd c)
 {
+#ifdef DEBUG
 	printf("Command is %s\n",c->args[0]);
+#endif
 	if(!strcmp(c->args[0],"unsetenv"))	exec_unsetenv(c);
 	else if(!strcmp(c->args[0],"cd"))	exec_cd(c);
 	else if(!strcmp(c->args[0],"echo"))	exec_echo(c);
