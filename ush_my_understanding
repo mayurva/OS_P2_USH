@@ -20,12 +20,12 @@ where --check
 rc file ~/.ushrc --check
 strings --check I guess :P
 special chars and backslash --check I guess :P 
-Signals --what all signals.. SIGQUIT (Ctrl+C) is the only left 
+Signals --check 
 
 10th la
 Env Variables
-setenv --done with setenv 
-unsetenv --done with getenv
+setenv -- check
+unsetenv --check
 
 system calls
 access --file permissions

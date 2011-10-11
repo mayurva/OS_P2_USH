@@ -66,7 +66,7 @@ void execute_command(Cmd c)
 			printf("pid is %d\n",pid);
 		#endif
 			if(pid)
-			waitpid(pid,&status,0);
+				waitpid(pid,&status,0);
 		}	
 	}
 
@@ -89,8 +89,12 @@ void runShell()
 		}
 		if(strcmp(cmd_line -> head -> args[0],"end")==0) // done with ushrc processing
 		{
-			setupPrompt();	
-			continue;
+			if(rc_processing)
+			{
+				setupPrompt();	
+				continue;
+			}
+			break;
 		}
 		prompt_flag = 0;
 		Pipe pipe_line = cmd_line;
@@ -124,7 +128,6 @@ void runShell()
 					if(subshell_pid) //This is the parent
 					{
 						setPipeRedirect(pipe_ref,fileno(stdin));						
-						waitpid(subshell_pid,&status,0);
 						d = c;
 						break;
 					}
@@ -137,17 +140,19 @@ void runShell()
 
 			}
 			execute_command(e);
+			waitpid(subshell_pid,&status,0);
 		#ifdef DEBUG
 			printf("Exit flag is: %d\n",exit_flag);
 		#endif		
 			if(exit_flag)
 				exit(0);
-			resetStreams();
 		#ifdef DEBUG
 			printf("Streams Reset\n");
 		#endif
 			pipe_line = pipe_line -> next;
 		}
+
+		resetStreams();
 	}
 }
 

@@ -1,6 +1,6 @@
 #ifndef USH
 #define USH
-
+//#define DEBUG
 #define TRUE 1
 #define FALSE 0
 

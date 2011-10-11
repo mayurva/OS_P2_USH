@@ -24,17 +24,17 @@ void saveStreams()
 {
 	if((old_stdin = dup(fileno(stdin))) == -1)
 	{
-		perror("dup failed\n");
+		fprintf(stderr,"dup savestream stdin failed\n");
 		exit(0);
 	}
 	if((old_stdout = dup(fileno(stdout))) == -1)
 	{
-		perror("dup failed\n");
+		fprintf(stderr,"dup savestream stdout failed\n");
 		exit(0);
 	}
 	if((old_stderr = dup(fileno(stderr))) == -1)
 	{
-		perror("dup failed\n");
+		fprintf(stderr,"dup savestream stderr failed\n");
 		exit(0);
 	}
 
@@ -44,19 +44,22 @@ void resetStreams()
 {
 	if(dup2(old_stdin,fileno(stdin)) == -1)
 	{
-		perror("dup failed\n");
-		exit(0);
+		fprintf(stderr,"dup reset stdin failed\n");
+		exit(-1);
 	}
+	close(old_stdin);
 	if(dup2(old_stdout,fileno(stdout)) == -1)
 	{
-		perror("dup failed\n");
-		exit(0);
+		fprintf(stderr,"dup reset stdout failed\n");
+		exit(-1);
 	}
+	close(old_stdout);
 	if(dup2(old_stderr,fileno(stderr)) == -1)
 	{
-		perror("dup failed\n");
-		exit(0);
+		fprintf(stderr,"dup reset stderr failed\n");
+		exit(-1);
 	}
+	close(old_stderr);
 }
 
 void printPrompt()
@@ -64,26 +67,21 @@ void printPrompt()
 	if(prompt_flag == 0)
 	{
 		printf("%s",prompt);
-		saveStreams();
 		fflush(stdout);
 		prompt_flag = 1;
 	}
+	saveStreams();
 }
 
-void execrc()
-{
-	saveStreams();
-	//NEED CODE HERE
-}
 
 void createPipe(int pipe_ref)
 {
-	close(pipefd[pipe_ref][0]);
-	close(pipefd[pipe_ref][1]);
+//	close(pipefd[pipe_ref][0]);
+//	close(pipefd[pipe_ref][1]);
 	if (pipe(pipefd[pipe_ref]) == -1)
 	{
-		perror("Pipe creation failed\n");
-		exit (-1);
+		printf("Pipe creation failed\n");
+		exit(-1);
 	}
 #ifdef DEBUG				
 	printf("pipe %d created \n",pipe_ref);
@@ -93,7 +91,11 @@ void createPipe(int pipe_ref)
 void setPipeRedirect(int pipe_ref,int stream)
 {
 	close(pipefd[pipe_ref][!stream]);
-	dup2(pipefd[pipe_ref][stream],stream);
+	if(dup2(pipefd[pipe_ref][stream],stream)==-1)
+	{
+		fprintf(stderr,"Pipe redirect failed\n");
+		exit(-1);
+	}
 #ifdef DEBUG
 	printf("The pipe ref is %d\n",pipe_ref);
 #endif
@@ -114,6 +116,7 @@ void handle_sigint()
 		exit(0);
 	printf("\n");
 	prompt_flag = 0;
+	resetStreams();
 	printPrompt();
 }
 
@@ -135,13 +138,22 @@ int initShell()
 	if((rc_file = open(rcpath,O_RDONLY)) != -1)
 	{
 		old_rc_stdin = dup(fileno(stdin));
-		dup2(rc_file,fileno(stdin));
+		if(old_rc_stdin == -1)
+		{
+			fprintf(stderr,"dup rcfile failed");
+			exit(-1);
+		}
+		if(dup2(rc_file,fileno(stdin))==-1)
+		{
+			fprintf(stderr,"dup rcfile failed");
+			exit(-1);
+		}
 		close(rc_file);
 		rc_processing = TRUE;	
 	}
 	else
 	{
-		perror("ushrc not found\n");
+		fprintf(stderr,"ushrc not found\n");
 		char hostname[MAXLEN];
 		int len;
 		rc_processing = FALSE;
@@ -159,11 +171,11 @@ int setupPrompt()
 	printf("Inside Setup prompt\n");
 #endif
 	dup2(old_rc_stdin,fileno(stdin));
+	close(old_rc_stdin);
 	rc_processing = FALSE;
 	gethostname(hostname,len);
 	strcpy(prompt,hostname);
 	strcat(prompt,"% ");
-	rc_processing = FALSE;
 	prompt_flag = 0;
 }
 
@@ -196,6 +208,18 @@ void exec_cd(Cmd c)
 		printf("HOME is %s\n",c->args[1]);
 	#endif
 	}
+	if(c->args[1][0]=='~')
+	{
+		char *temp,temp1[MAXLEN];
+		int tlen = 0;
+		temp = strtok(c->args[1],"~");
+		if(temp)
+			tlen = strlen(temp);
+		c->args[1] = malloc(strlen(home)+tlen);
+		strcpy(c->args[1],home);
+		if(temp)
+			strcat(c->args[1],temp);
+	}
         if(isdir(c->args[1]))
 	{
 		if(c->args[1][0] == '/')
@@ -209,12 +233,15 @@ void exec_cd(Cmd c)
 		cmd_path=strtok(c->args[1],"/");
 		while(cmd_path != NULL)
 		{
-			chdir(cmd_path);
-		#ifdef DEBUG
-			printf("%s/",cmd_path);
-		#endif
-			strcat(cwd,"/");
-			strcat(cwd,cmd_path);
+			if(cmd_path[0]!='~')
+			{
+				chdir(cmd_path);
+			#ifdef DEBUG
+				printf("%s/",cmd_path);
+			#endif	
+				strcat(cwd,"/");
+				strcat(cwd,cmd_path);
+			}
 			cmd_path = strtok(NULL,"/");
 		}
 	#ifdef DEBUG	
@@ -225,10 +252,10 @@ void exec_cd(Cmd c)
 	#ifdef DEBUG
 		printf("cwd is %s\n",cwd);
 	#endif
-		setenv("PWD",cwd,1);
+	//	setenv("PWD",cwd,1);
 	}	
 	else
-		perror("Not a directory\n");
+		fprintf(stderr,"Not a directory\n");
 }
 
 int isdir(char *cmd_path)
@@ -292,7 +319,8 @@ void exec_nice(Cmd c)
 void exec_pwd(Cmd c)
 {
 	char *dir,*env_dir;
-	env_dir = getenv("PWD");
+	//env_dir = getenv("PWD");
+	env_dir = (char*)get_current_dir_name();
 	printf("%s\n",env_dir);
 
 }
@@ -325,7 +353,10 @@ void exec_setenv(Cmd c)
 void exec_unsetenv(Cmd c)
 {
 	if(c->args[1] == NULL)
-		perror("unsetenv: too few arguments\n");
+	{
+		fprintf(stderr,"unsetenv: too few arguments\n");
+		return;
+	}
 	else
 	{
 		unsetenv(c->args[1]);
@@ -369,6 +400,9 @@ void execCmd(Cmd c)
 	else if(!strcmp(c->args[0],"setenv"))	exec_setenv(c);
 	else if(!strcmp(c->args[0],"logout"))	exit(0);
 	else if(!strcmp(c->args[0],"where"))	exec_where(c);	 
+#ifdef DEBUG
+	printf("Completed Execution\n");
+#endif
 }
 
 setupRedirect(Cmd c)
@@ -377,10 +411,15 @@ setupRedirect(Cmd c)
 	if(c->in==Tin)
 		if((temp = open(c->infile,O_RDONLY)) != -1)
 		{
-			dup2(temp,fileno(stdin));
+			if(dup2(temp,fileno(stdin)) == -1)
+			{
+				fprintf(stderr,"Input redirect failed\n");
+				exit(-1);
+			}
 			close(temp);
 		}
-	if(c->out!=Tnil)
+//	printf("c->out is %d\n",c->out);
+//	if(c->out!=Tnil)
 		switch ( c->out )
 		{
 			case ToutErr:
@@ -410,9 +449,9 @@ setupRedirect(Cmd c)
 				}
 				break;
 
-			default:                  
-				fprintf(stderr, "Shouldn't get here\n");
-				exit(-1);               
+//			default:                  
+//				fprintf(stderr, "Shouldn't get here\n");
+//				exit(-1);               
 		}                         
 }
 
