@@ -5,11 +5,13 @@
 
 #include"ush.h"
 #include"parse.h"
+
 int exit_flag;
 int pipe_ref;
 char *invalid_cmd[] = {"","Command not found","Permission denied"};
 int pid,status;
 int prompt_flag;
+Pipe pipe_line;
 
 void execute_command(Cmd c)
 {
@@ -96,10 +98,10 @@ void runShell()
 			break;
 		}
 		prompt_flag = 0;
-		Pipe pipe_line = cmd_line;
+		pipe_line = cmd_line;
 		while(pipe_line)
 		{
-			
+			saveStreams();
 			subshell_pid = pid = 0;
 			exit_flag = 0;
 			
@@ -148,10 +150,12 @@ void runShell()
 		#ifdef DEBUG
 			printf("Streams Reset\n");
 		#endif
-			pipe_line = pipe_line -> next;
+			if(pipe_line)
+				pipe_line = pipe_line -> next;
+			resetStreams();
 		}
 
-		resetStreams();
+		
 	}
 }
 

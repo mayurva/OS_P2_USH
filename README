@@ -1,0 +1,16 @@
+This is a readme file for USH the microshell for OS 501 course
+The attached zip contains a Makefile
+Note: The makefile does not use the -m32 flag
+
+There are 4 *.c files 
+ush.c The main program and functions of shell
+ush_util.c Utility functions of shell
+parse.c Parser related code unmodified as provided by Professor
+
+There are two header files
+ush.h contains declaration of global variables for shell
+parse.h is the header file of parser as provided by Professor
+
+The file REFERENCES contains all the references used.
+
+The shell will display the prompt only when stdout is a terminal. Otherwise only output of the commands are displayed.

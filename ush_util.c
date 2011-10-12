@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include<signal.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include"ush.h"
 #include"parse.h"
@@ -70,7 +72,6 @@ void printPrompt()
 		fflush(stdout);
 		prompt_flag = 1;
 	}
-	saveStreams();
 }
 
 
@@ -114,7 +115,7 @@ void handle_sigint()
 		exit(0);
 	printf("\n");
 	prompt_flag = 0;
-	resetStreams();
+	pipe_line = NULL;
 	printPrompt();
 }
 
@@ -154,10 +155,13 @@ int initShell()
 		char hostname[MAXLEN];
 		int len;
 		rc_processing = FALSE;
-		gethostname(hostname,len);
-		if(len)
-			strcpy(prompt,hostname);
-		strcat(prompt,"% ");
+		if(isatty(fileno(stdout)))
+		{		
+			gethostname(hostname,len);
+			if(len)
+				strcpy(prompt,hostname);
+			strcat(prompt,"% ");
+		}
 	}
 }
 
@@ -171,9 +175,13 @@ int setupPrompt()
 	dup2(old_rc_stdin,fileno(stdin));
 	close(old_rc_stdin);
 	rc_processing = FALSE;
-	gethostname(hostname,len);
-	strcpy(prompt,hostname);
-	strcat(prompt,"% ");
+	if(isatty(fileno(stdout)))
+	{
+		gethostname(hostname,len);
+		if(len)
+			strcpy(prompt,hostname);
+		strcat(prompt,"% ");
+	}
 	prompt_flag = 0;
 }
 
@@ -273,34 +281,45 @@ int iscmd(char *cmd_path)
 void exec_nice(Cmd c)
 {
 	int which, who, prio;
+	
+	//below initialization for current process
+	which = PRIO_PROCESS;
+	who = 0;
+
+	//process 1st argument
 	if(c->args[1]!=NULL)
 	{
-		prio = atoi(c->args[0]);
+		prio = atoi(c->args[1]);
 		if(prio<-19)
 			prio = -19;
 		else if(prio>20)
 			prio = 20;
 	}
 	else	prio = 4;
+
+	//get and setpriority
 	getpriority(which, who);
 	setpriority(which, who, prio);
-	if(c->args[2]!=NULL)
-	{
-	#ifdef DEBUG
-		printf("Command present %s\n",c->args[0]);
-	#endif
-		Cmd temp;
-		temp = malloc(sizeof(struct cmd_t));
-		temp->args = malloc(sizeof(char*));
-		temp->in = Tnil;
-		temp->out = Tnil;
-		temp->args[0] = malloc(strlen(c->args[2]));
-		strcpy(temp->args[0],c->args[2]);
-		execute_command(temp);
-		free(temp->args[0]);
-		free(temp->args);
-		free(temp);
-	}
+
+	//process 2nd argument if present
+	if(c->args[1]!=NULL)	
+		if(c->args[2]!=NULL)
+		{
+		#ifdef DEBUG
+			printf("Command present %s\n",c->args[0]);
+		#endif
+			Cmd temp;
+			temp = malloc(sizeof(struct cmd_t));
+				temp->args = malloc(sizeof(char*));
+			temp->in = Tnil;
+			temp->out = Tnil;
+			temp->args[0] = malloc(strlen(c->args[2]));
+			strcpy(temp->args[0],c->args[2]);
+			execute_command(temp);
+			free(temp->args[0]);
+			free(temp->args);
+			free(temp);
+		}
 }
 
 void exec_pwd(Cmd c)

@@ -3,10 +3,10 @@
 //#define DEBUG
 #define TRUE 1
 #define FALSE 0
-
+#include"parse.h"
 #define MAXLEN 500
 #define NO_OF_CMDS 8
-
+extern Pipe pipe_line;
 extern int prompt_flag;
 extern int exit_flag;
 extern int old_stdin;
